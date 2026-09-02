@@ -90,6 +90,7 @@ def do_download(task_id: str, url: str, fmt: str):
         "noplaylist": True,          # solo el video, no la lista completa
         "retries": 5,
         "cookiefile": "cookies.txt",
+        "extractor_args": {"youtube": ["player_client=android"]},
     }
 
     if FFMPEG_PATH:
