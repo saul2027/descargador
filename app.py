@@ -89,6 +89,7 @@ def do_download(task_id: str, url: str, fmt: str):
         "no_warnings": True,
         "noplaylist": True,          # solo el video, no la lista completa
         "retries": 5,
+        "cookiefile": "cookies.txt",
     }
 
     if FFMPEG_PATH:
