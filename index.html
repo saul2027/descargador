@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YT Downloader — Saúl Code</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── VARIABLES ────────────────────────────────── */
+    :root {
+      --red-300: #fca5a5; --red-400: #f87171;
+      --red-500: #ef4444; --red-600: #dc2626; --red-700: #b91c1c;
+      --red-glow: rgba(239,68,68,.35);
+
+      --bg-base:    #0a0a0b; --bg-surface: #111113;
+      --bg-card:    #18181b; --bg-card2:   #1f1f23;
+      --border:     rgba(255,255,255,.08);
+      --text-1: #f4f4f5; --text-2: #a1a1aa; --text-3: #52525b;
+      --input-bg:   #1f1f23; --input-border: rgba(255,255,255,.12);
+      --shadow-card: 0 4px 24px rgba(0,0,0,.5);
+    }
+    [data-theme="light"] {
+      --bg-base:    #fafafa; --bg-surface: #f4f4f5;
+      --bg-card:    #ffffff; --bg-card2:   #f4f4f5;
+      --border:     rgba(0,0,0,.08);
+      --text-1: #09090b; --text-2: #52525b; --text-3: #a1a1aa;
+      --input-bg:   #ffffff; --input-border: rgba(0,0,0,.15);
+      --shadow-card: 0 4px 24px rgba(0,0,0,.08);
+      --red-glow: rgba(239,68,68,.15);
+    }
+
+    /* ─── RESET ────────────────────────────────────── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{
+      font-family:'Inter',system-ui,sans-serif;
+      background:var(--bg-base); color:var(--text-1);
+      min-height:100vh; overflow-x:hidden;
+      transition:background .3s,color .3s;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% -10%,rgba(220,38,38,.18) 0%,transparent 60%),
+        radial-gradient(ellipse 40% 30% at 80% 80%,rgba(185,28,28,.10) 0%,transparent 60%);
+    }
+
+    /* ─── LAYOUT ────────────────────────────────────── */
+    .wrapper{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 20px 60px;}
+
+    /* ─── HEADER ────────────────────────────────────── */
+    header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 0;}
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+    .logo-icon{
+      width:40px;height:40px;border-radius:12px;flex-shrink:0;
+      background:linear-gradient(135deg,var(--red-600),var(--red-400));
+      box-shadow:0 4px 14px var(--red-glow);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .logo-icon svg{width:22px;height:22px;fill:#fff;}
+    .logo-text{font-size:1.25rem;font-weight:800;letter-spacing:-.5px;color:var(--text-1);}
+    .logo-text span{color:var(--red-500);}
+
+    .theme-toggle{
+      background:var(--bg-card);border:1px solid var(--border);border-radius:50px;
+      padding:6px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;
+      font-size:.82rem;font-weight:500;color:var(--text-2);
+      font-family:inherit;transition:all .25s;
+    }
+    .theme-toggle:hover{border-color:var(--red-600);color:var(--text-1);}
+
+    /* ─── HERO ──────────────────────────────────────── */
+    .hero{text-align:center;padding:56px 0 40px;}
+    .badge{
+      display:inline-flex;align-items:center;gap:6px;
+      background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);
+      border-radius:50px;padding:5px 14px;
+      font-size:.78rem;font-weight:600;color:var(--red-400);
+      letter-spacing:.5px;text-transform:uppercase;margin-bottom:20px;
+    }
+    .hero h1{
+      font-size:clamp(2rem,6vw,3.4rem);font-weight:900;
+      letter-spacing:-1.5px;line-height:1.08;margin-bottom:16px;
+    }
+    .hero h1 .gradient{
+      background:linear-gradient(90deg,var(--red-500),var(--red-300));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .hero p{font-size:1rem;color:var(--text-2);max-width:480px;margin:0 auto;line-height:1.7;}
+
+    /* ─── SERVER STATUS ─────────────────────────────── */
+    .server-status{
+      display:flex;align-items:center;gap:8px;justify-content:center;
+      margin-top:16px;font-size:.82rem;font-weight:500;
+    }
+    .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .dot.ok{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,.6);}
+    .dot.err{background:var(--red-500);box-shadow:0 0 6px var(--red-glow);}
+    .dot.check{background:#f59e0b;animation:pulse 1s ease infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+    /* ─── MAIN CARD ─────────────────────────────────── */
+    .card{
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:24px;padding:32px 32px 28px;
+      box-shadow:var(--shadow-card);transition:background .3s,border .3s;
+    }
+
+    .section-label{
+      font-size:.75rem;font-weight:700;color:var(--text-3);
+      letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;display:block;
+    }
+
+    /* Format tabs */
+    .format-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+    .format-btn{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      padding:13px 18px;border:2px solid var(--border);border-radius:14px;
+      background:var(--bg-card2);cursor:pointer;font-family:inherit;
+      font-size:.92rem;font-weight:600;color:var(--text-2);
+      transition:all .2s;position:relative;overflow:hidden;
+    }
+    .format-btn::before{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,var(--red-600),var(--red-700));
+      opacity:0;transition:opacity .2s;
+    }
+    .format-btn:hover{border-color:var(--red-500);color:var(--text-1);}
+    .format-btn.active{border-color:var(--red-500);color:#fff;box-shadow:0 0 20px var(--red-glow);}
+    .format-btn.active::before{opacity:1;}
+    .format-btn .bi,.format-btn .bt,.format-btn .bb{position:relative;z-index:1;}
+    .format-btn .bi{font-size:1.25rem;}
+    .format-btn .bb{
+      font-size:.65rem;font-weight:700;background:rgba(255,255,255,.15);
+      border-radius:5px;padding:2px 6px;letter-spacing:.4px;
+    }
+    .format-btn.active .bb{background:rgba(255,255,255,.22);}
+
+    /* Quality row */
+    .quality-row{
+      display:flex;align-items:center;gap:8px;margin-bottom:20px;
+      padding:9px 14px;background:rgba(239,68,68,.07);
+      border:1px solid rgba(239,68,68,.18);border-radius:10px;
+      font-size:.82rem;color:var(--text-2);
+    }
+    .quality-row strong{color:var(--red-400);}
+
+    /* URL input group */
+    .input-row{display:flex;gap:8px;align-items:stretch;}
+    .url-input{
+      flex:1;background:var(--input-bg);border:1.5px solid var(--input-border);
+      border-radius:13px;padding:13px 16px;
+      font-family:inherit;font-size:.92rem;color:var(--text-1);
+      outline:none;transition:border-color .2s,box-shadow .2s;
+      min-width:0;
+    }
+    .url-input::placeholder{color:var(--text-3);}
+    .url-input:focus{border-color:var(--red-500);box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+
+    .icon-btn{
+      background:var(--bg-card2);border:1.5px solid var(--input-border);
+      border-radius:13px;padding:0 14px;cursor:pointer;
+      color:var(--text-2);font-size:.80rem;font-weight:600;font-family:inherit;
+      transition:all .2s;white-space:nowrap;
+      display:flex;align-items:center;gap:6px;flex-shrink:0;
+    }
+    .icon-btn:hover{border-color:var(--red-500);color:var(--text-1);}
+    .icon-btn.clear-btn:hover{border-color:#f59e0b;color:#fbbf24;}
+
+    /* Download + clear buttons row */
+    .action-row{display:flex;gap:10px;margin-top:14px;}
+
+    .download-btn{
+      flex:1;padding:15px;border:none;border-radius:13px;
+      background:linear-gradient(135deg,var(--red-600),var(--red-700));
+      color:#fff;font-family:inherit;font-size:.98rem;font-weight:700;
+      cursor:pointer;transition:all .25s;
+      display:flex;align-items:center;justify-content:center;gap:9px;
+      box-shadow:0 4px 18px var(--red-glow);position:relative;overflow:hidden;
+    }
+    .download-btn::after{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);
+      opacity:0;transition:opacity .2s;
+    }
+    .download-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 28px var(--red-glow);}
+    .download-btn:hover::after{opacity:1;}
+    .download-btn:active{transform:translateY(0);}
+    .download-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+
+    .clear-main-btn{
+      padding:15px 20px;border:1.5px solid var(--input-border);border-radius:13px;
+      background:var(--bg-card2);color:var(--text-2);
+      font-family:inherit;font-size:.92rem;font-weight:600;cursor:pointer;
+      transition:all .2s;display:flex;align-items:center;gap:7px;flex-shrink:0;
+    }
+    .clear-main-btn:hover{border-color:#f59e0b;color:#fbbf24;background:rgba(245,158,11,.07);}
+
+    /* ─── PROGRESS ──────────────────────────────────── */
+    .progress-section{margin-top:20px;display:none;}
+    .progress-section.visible{display:block;}
+    .progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .progress-status{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;}
+    .spinner{
+      width:15px;height:15px;
+      border:2.5px solid var(--border);border-top-color:var(--red-500);
+      border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;
+    }
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .progress-pct{font-size:.85rem;font-weight:700;color:var(--red-400);}
+    .progress-track{background:var(--bg-card2);border-radius:50px;height:7px;overflow:hidden;}
+    .progress-fill{
+      height:100%;background:linear-gradient(90deg,var(--red-600),var(--red-400));
+      border-radius:50px;width:0%;transition:width .4s ease;
+      box-shadow:0 0 8px var(--red-glow);
+    }
+
+    /* ─── STATUS MESSAGES ───────────────────────────── */
+    .msg{
+      margin-top:16px;padding:13px 16px;border-radius:12px;
+      font-size:.88rem;font-weight:500;display:none;align-items:flex-start;gap:10px;
+    }
+    .msg.visible{display:flex;}
+    .msg.success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;}
+    .msg.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red-400);}
+    .msg.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fbbf24;}
+    .msg-icon{font-size:1.05rem;flex-shrink:0;margin-top:1px;}
+    .msg-body{line-height:1.5;}
+    .msg-body small{opacity:.75;font-size:.8rem;display:block;margin-top:3px;}
+
+    /* ─── FEATURES ──────────────────────────────────── */
+    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px;}
+    @media(max-width:560px){.features{grid-template-columns:1fr;}}
+    .fcard{
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:18px;padding:20px 16px;text-align:center;
+      transition:border-color .2s,transform .2s;
+    }
+    .fcard:hover{border-color:rgba(239,68,68,.35);transform:translateY(-3px);}
+    .fcard .fi{font-size:1.7rem;margin-bottom:8px;}
+    .fcard .ft{font-size:.88rem;font-weight:700;margin-bottom:4px;}
+    .fcard .fd{font-size:.78rem;color:var(--text-2);line-height:1.5;}
+
+    /* ─── FOOTER ────────────────────────────────────── */
+    footer{text-align:center;padding:44px 0 0;color:var(--text-3);font-size:.8rem;}
+    footer .author{font-weight:700;color:var(--red-500);}
+    footer .divider{
+      width:40px;height:2px;margin:14px auto 10px;border-radius:2px;
+      background:linear-gradient(90deg,transparent,var(--red-600),transparent);
+    }
+
+    /* ─── SCROLLBAR ─────────────────────────────────── */
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:var(--bg-base);}
+    ::-webkit-scrollbar-thumb{background:var(--red-700);border-radius:3px;}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      </div>
+      <span class="logo-text">YT <span>Downloader</span></span>
+    </a>
+    <button class="theme-toggle" id="themeToggle">
+      <span id="themeIcon">☀️</span>
+      <span id="themeLabel">Modo claro</span>
+    </button>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge"><span>🔴</span> Alta calidad · MP3 &amp; MP4</div>
+    <h1>Descargador de<br /><span class="gradient">YouTube</span></h1>
+    <p>Pega un link de YouTube y descarga en MP3 (audio) o MP4 (video) con la mejor calidad disponible.</p>
+    <div class="server-status">
+      <span class="dot check" id="sDot"></span>
+      <span id="sText" style="color:var(--text-3);">Verificando servidor...</span>
+    </div>
+  </section>
+
+  <!-- CARD -->
+  <div class="card">
+
+    <!-- Formato -->
+    <span class="section-label">Formato de descarga</span>
+    <div class="format-tabs">
+      <button class="format-btn active" id="btnMP3" onclick="setFormat('mp3')">
+        <span class="bi">🎵</span><span class="bt">MP3</span><span class="bb">AUDIO</span>
+      </button>
+      <button class="format-btn" id="btnMP4" onclick="setFormat('mp4')">
+        <span class="bi">🎬</span><span class="bt">MP4</span><span class="bb">VIDEO</span>
+      </button>
+    </div>
+
+    <!-- Calidad -->
+    <div class="quality-row" id="qualityRow">
+      <span>✨</span>
+      <span id="qualityText">Se descargará en <strong>MP3 · 320 kbps</strong> — máxima calidad de audio</span>
+    </div>
+
+    <!-- URL -->
+    <span class="section-label" style="margin-top:4px;">Link de YouTube</span>
+    <div class="input-row">
+      <input type="url" id="urlInput" class="url-input"
+        placeholder="https://www.youtube.com/watch?v=..."
+        autocomplete="off" spellcheck="false" />
+      <button class="icon-btn" onclick="pasteURL()" title="Pegar portapapeles">📋 Pegar</button>
+      <button class="icon-btn clear-btn" onclick="clearURL()" title="Limpiar link">🗑️</button>
+    </div>
+
+    <!-- Botones acción -->
+    <div class="action-row">
+      <button class="download-btn" id="downloadBtn" onclick="startDownload()">
+        <span>⬇️</span> Descargar
+      </button>
+      <button class="clear-main-btn" onclick="resetAll()" title="Limpiar todo">
+        ✖ Limpiar
+      </button>
+    </div>
+
+    <!-- Progreso -->
+    <div class="progress-section" id="progressSection">
+      <div class="progress-header">
+        <div class="progress-status">
+          <div class="spinner" id="spinner"></div>
+          <span id="statusText">Procesando...</span>
+        </div>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- Mensajes -->
+    <div class="msg success" id="msgSuccess">
+      <span class="msg-icon">✅</span>
+      <div class="msg-body" id="msgSuccessText">¡Descarga completada!</div>
+    </div>
+    <div class="msg error" id="msgError">
+      <span class="msg-icon">⚠️</span>
+      <div class="msg-body" id="msgErrorText">Error</div>
+    </div>
+    <div class="msg warn" id="msgWarn">
+      <span class="msg-icon">💡</span>
+      <div class="msg-body" id="msgWarnText"></div>
+    </div>
+
+  </div>
+
+  <!-- FEATURES -->
+  <div class="features">
+    <div class="fcard">
+      <div class="fi">🎧</div>
+      <div class="ft">MP3 · 320 kbps</div>
+      <div class="fd">Audio en máxima calidad, ideal para música.</div>
+    </div>
+    <div class="fcard">
+      <div class="fi">🎬</div>
+      <div class="ft">MP4 · HD / 4K</div>
+      <div class="fd">Video en la mejor resolución disponible.</div>
+    </div>
+    <div class="fcard">
+      <div class="fi">⚡</div>
+      <div class="ft">Sin límites</div>
+      <div class="fd">Descarga ilimitada, solo para uso personal.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="divider"></div>
+    <p>Creado con ❤️ por <span class="author">Saúl Code</span></p>
+    <p style="margin-top:5px;font-size:.74rem;opacity:.5;">YT Downloader &copy; 2025 · Solo uso personal</p>
+  </footer>
+
+</div><!-- /wrapper -->
+
+<script>
+  const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000'
+    : window.location.origin;  // En Render usa la misma URL del sitio
+  let fmt = 'mp3';
+  let pollTimer = null;
+
+  /* ── SERVER PING ─────────────────────────────────── */
+  async function checkServer() {
+    const dot  = document.getElementById('sDot');
+    const text = document.getElementById('sText');
+    try {
+      const r = await fetch(`${API}/api/ping`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        const d = await r.json();
+        dot.className  = 'dot ok';
+        text.style.color = 'var(--text-2)';
+        text.textContent = d.ffmpeg
+          ? 'Servidor activo · ffmpeg disponible'
+          : 'Servidor activo · ffmpeg no detectado (usando modo alternativo)';
+        if (!d.ffmpeg) showWarn('Sin ffmpeg: MP3 se descargará como M4A (alta calidad) y MP4 sin fusionar streams. Para calidad máxima instala ffmpeg (<code>winget install ffmpeg</code>) y reinicia app.py.');
+      } else { throw new Error(); }
+    } catch {
+      dot.className  = 'dot err';
+      text.style.color = 'var(--red-400)';
+      text.textContent = 'Servidor no encontrado — ejecuta: python app.py';
+    }
+  }
+  checkServer();
+  setInterval(checkServer, 15000); // re-chequea cada 15s
+
+  /* ── FORMAT ──────────────────────────────────────── */
+  function setFormat(f) {
+    fmt = f;
+    document.getElementById('btnMP3').classList.toggle('active', f === 'mp3');
+    document.getElementById('btnMP4').classList.toggle('active', f === 'mp4');
+    document.getElementById('qualityText').innerHTML = f === 'mp3'
+      ? 'Se descargará en <strong>MP3 · 320 kbps</strong> — máxima calidad de audio'
+      : 'Se descargará en <strong>MP4 · mejor resolución</strong> disponible (4K/1080p/720p)';
+    hideMessages();
+  }
+
+  /* ── URL HELPERS ─────────────────────────────────── */
+  async function pasteURL() {
+    try {
+      const t = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = t;
+      hideMessages();
+    } catch {
+      document.getElementById('urlInput').focus();
+    }
+  }
+  function clearURL() {
+    document.getElementById('urlInput').value = '';
+    document.getElementById('urlInput').focus();
+    hideMessages();
+  }
+
+  /* ── RESET ALL ───────────────────────────────────── */
+  function resetAll() {
+    clearURL();
+    stopPoll();
+    setProgress(false, 0, '');
+    setLoading(false);
+  }
+
+  /* ── DOWNLOAD FLOW ───────────────────────────────── */
+  async function startDownload() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { showError('Pega el link de YouTube primero.'); return; }
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      showError('El link no parece ser de YouTube. Revísalo e intenta de nuevo.'); return;
+    }
+
+    hideMessages();
+    setLoading(true);
+    setProgress(true, 0, 'Iniciando...');
+
+    let taskId;
+    try {
+      const r = await fetch(`${API}/api/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, format: fmt }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Error al iniciar');
+      taskId = d.task_id;
+    } catch (e) {
+      setLoading(false);
+      setProgress(false);
+      if (e.name === 'TimeoutError' || e.message === 'Failed to fetch' || e.name === 'TypeError') {
+        showError('No se pudo conectar con el servidor.', '¿Está corriendo app.py? Abre una terminal y ejecuta: python app.py');
+      } else {
+        showError(e.message);
+      }
+      return;
+    }
+
+    pollTask(taskId);
+  }
+
+  function pollTask(taskId) {
+    let errors = 0;
+    pollTimer = setInterval(async () => {
+      try {
+        const r  = await fetch(`${API}/api/status/${taskId}`, { signal: AbortSignal.timeout(5000) });
+        const d  = await r.json();
+        const p  = d.progress || 0;
+
+        if (d.status === 'downloading') {
+          setProgress(true, p, `Descargando... ${p}%`);
+        } else if (d.status === 'done') {
+          stopPoll();
+          setProgress(true, 100, '¡Listo! Guardando archivo...');
+          document.getElementById('spinner').style.display = 'none';
+          triggerDownload(taskId);
+        } else if (d.status === 'error') {
+          stopPoll();
+          setLoading(false);
+          setProgress(false);
+          showError('Error en la descarga.', cleanAnsi(d.error || ''));
+        }
+        errors = 0;
+      } catch {
+        if (++errors > 6) { stopPoll(); setLoading(false); setProgress(false); showError('Perdí conexión con el servidor.'); }
+      }
+    }, 700);
+  }
+
+  function triggerDownload(taskId) {
+    const a = document.createElement('a');
+    a.href = `${API}/api/file/${taskId}`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      setLoading(false);
+      setProgress(false);
+      showSuccess('¡Descarga completada! Revisa tu carpeta de Descargas.');
+    }, 1200);
+  }
+
+  function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+  /* ── UI HELPERS ──────────────────────────────────── */
+  function setLoading(on) {
+    const btn = document.getElementById('downloadBtn');
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></span> Procesando...`
+      : `<span>⬇️</span> Descargar`;
+  }
+
+  function setProgress(show, pct = 0, label = '') {
+    const sec = document.getElementById('progressSection');
+    sec.classList.toggle('visible', show);
+    if (!show) return;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent   = pct + '%';
+    document.getElementById('statusText').textContent    = label;
+    const spin = document.getElementById('spinner');
+    spin.style.display = pct < 100 ? 'block' : 'none';
+  }
+
+  function showSuccess(txt) {
+    document.getElementById('msgSuccessText').textContent = txt;
+    document.getElementById('msgSuccess').classList.add('visible');
+  }
+  function showError(txt, sub = '') {
+    const el = document.getElementById('msgErrorText');
+    el.innerHTML = escHtml(txt) + (sub ? `<small>${escHtml(sub)}</small>` : '');
+    document.getElementById('msgError').classList.add('visible');
+  }
+  function showWarn(html) {
+    document.getElementById('msgWarnText').innerHTML = html;
+    document.getElementById('msgWarn').classList.add('visible');
+  }
+  function hideMessages() {
+    ['msgSuccess','msgError','msgWarn'].forEach(id =>
+      document.getElementById(id).classList.remove('visible'));
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function cleanAnsi(s) {
+    return s.replace(/\x1b\[[0-9;]*m/g,'').replace(/\[[\d;]*m/g,'');
+  }
+
+  /* ── THEME ───────────────────────────────────────── */
+  const html = document.documentElement;
+  function applyTheme(t) {
+    html.setAttribute('data-theme', t);
+    document.getElementById('themeIcon').textContent  = t === 'dark' ? '☀️' : '🌙';
+    document.getElementById('themeLabel').textContent = t === 'dark' ? 'Modo claro' : 'Modo oscuro';
+  }
+  applyTheme(localStorage.getItem('yt-theme') || 'dark');
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const n = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(n); localStorage.setItem('yt-theme', n);
+  });
+
+  /* ── ENTER KEY ───────────────────────────────────── */
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startDownload();
+  });
+</script>
+</body>
+</html>
