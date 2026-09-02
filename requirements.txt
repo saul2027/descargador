@@ -2,3 +2,4 @@ flask
 flask-cors
 yt-dlp
 imageio-ffmpeg
+https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
